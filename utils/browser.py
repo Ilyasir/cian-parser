@@ -7,6 +7,17 @@ from core import config
 logger = setup_logger()
 
 
+async def block_heavy_resources(page: Page):
+    """Отключает загрузку тяжелых ресурсов(картинок и стилей) для экономии трафика и скорости."""
+    def route_handler(route):
+
+        if route.request.resource_type in ["image", "font", "media", "stylesheet"]:
+            return route.abort()
+        return route.continue_()
+
+    await page.route("**/*", route_handler)
+
+
 async def collect_links_flats(urls_data: list[dict], page: Page, max_page: int) -> list[tuple[str, int]]:
     """
     Проходит по страницам категорий, собирает ссылки на квартиры 

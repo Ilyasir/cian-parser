@@ -6,7 +6,7 @@ from playwright.async_api import async_playwright
 from core import config
 from parsers.cian import parse_flat_page
 from core.logger import setup_logger
-from utils.browser import collect_links_flats
+from utils.browser import block_heavy_resources, collect_links_flats
 
 logger = setup_logger()
 semaphore = asyncio.Semaphore(config.CONCURRENT_TASKS)
@@ -20,6 +20,7 @@ async def scrape_flat_page(browser, link: str, rooms: int) -> dict | None:
             extra_http_headers=config.DEFAULT_HEADERS
         )
         page = await context.new_page()
+        await block_heavy_resources(page)
 
         try:
             # небольшая случайная задержка перед загрузкой страницы
