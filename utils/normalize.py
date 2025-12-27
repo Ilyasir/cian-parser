@@ -14,7 +14,7 @@ def area_to_float(area_str: str | None) -> float | None:
     if not area_str:
         return None
 
-    cleaned = area_str.replace("\xa0", "").replace("м²", "").replace(",", ".").strip()
+    cleaned = area_str.replace("\xa0", "").replace("м²", "").replace("м", "").replace(",", ".").strip()
     try:
         return float(cleaned)
     except ValueError:

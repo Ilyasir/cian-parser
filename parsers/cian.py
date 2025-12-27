@@ -116,6 +116,18 @@ def get_year_built(soup: BeautifulSoup) -> int | None:
     return None
 
 
+def get_ceiling_height(soup: BeautifulSoup) -> float | None:
+    items = soup.find_all("div", {"data-name": "OfferSummaryInfoItem"})
+
+    for item in items:
+        if "Высота потолков" in item.get_text():
+            val = item.find_all("p")
+            if len(val) > 1:
+                return area_to_float(val[1].get_text(strip=True))
+
+    return None
+
+
 def get_building_type(soup: BeautifulSoup) -> str | None:
     items = soup.find_all("div", {"data-name": "OfferSummaryInfoItem"})
 
@@ -195,6 +207,7 @@ async def parse_flat_page(page: Page, link: str, rooms: int) -> dict:
         "description": get_description(soup),
         "repair": get_repair(soup),
         "year_built": get_year_built(soup),
+        "ceiling_height": get_ceiling_height(soup),
         "building_type": get_building_type(soup),
         "underground": get_undergrounds(soup)
     }
