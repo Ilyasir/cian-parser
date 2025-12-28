@@ -54,23 +54,48 @@ def get_floors(soup: BeautifulSoup) -> tuple[int | None, int | None]:
 
 def get_address(soup: BeautifulSoup) -> dict | None:
     container = soup.find("div", {"data-name": "AddressContainer"})
-    
     if not container:
         return None
     
     address_links = container.find_all("a")
-    
-    if not address_links:
+
+    parts = [link.get_text(strip=True).replace(",", "") for link in address_links]
+    parts = [p for p in parts if p.lower() != "на карте"]
+
+    if not parts:
         return None
 
-    parts = [link.get_text(strip=True) for link in address_links]
-    parts = [p for p in parts if p.lower() != "на карте"]
+    okrug_mapping = {
+        "новомосковский": "НАО",
+        "троицкий": "ТАО",
+        "центральный": "ЦАО",
+        "северный": "САО",
+        "южный": "ЮАО",
+        "западный": "ЗАО",
+        "восточный": "ВАО",
+        "юго-западный": "ЮЗАО",
+        "юго-восточный": "ЮВАО",
+        "северо-западный": "СЗАО",
+        "северо-восточный": "СВАО",
+        "зеленоградский": "ЗелАО"
+    }
+
+    raw_okrug = parts[1] if len(parts) > 1 else None
+    cleaned_okrug = raw_okrug
+
+    if raw_okrug:
+        low_okrug = raw_okrug.lower()
+        for long_name, short_name in okrug_mapping.items():
+            if long_name in low_okrug:
+                cleaned_okrug = short_name
+                break
 
     address_data = {
         "full_address": ", ".join(parts),
         "city": parts[0] if len(parts) > 0 else None,
-        "district": parts[1] if len(parts) > 1 else None,
-        "street": parts[-2] if len(parts) > 2 else None,
+        "okrug": cleaned_okrug,
+        "district": parts[2] if len(parts) > 2 else None,
+        "street": parts[-2] if len(parts) > 1 else None,
         "house": parts[-1] if len(parts) > 0 else None,
     }
     
@@ -193,6 +218,8 @@ async def parse_flat_page(page: Page, link: str, rooms: int) -> dict:
 
     floors_tuple = get_floors(soup)
     floor, floors_total = floors_tuple
+
+    # parsed_at = 
 
     result = {
         "link": link,
