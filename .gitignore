@@ -1,11 +1,19 @@
 .venv/
 .env
 
-__pycache__/
-*.py[cod]
-
-flat_test.json
-data/
 *.log
+**/__pycache__/
+*.pyc
 
+.vscode/
 .idea/
+
+# minio
+data/
+minio_data/
+
+# airflow
+logs/
+config/
+plugins/
+*.pid

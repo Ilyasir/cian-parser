@@ -10,6 +10,7 @@ from parser.utils.files import save_to_jsonl
 from parser.utils.normalize import extract_cian_id
 from parser.utils.browser import block_heavy_resources
 from parser.core.logger import setup_logger
+from parser.utils.s3_client import upload_file_to_s3
 
 logger = setup_logger()
 
@@ -93,21 +94,24 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename):
 
 
 async def main():
+    os.makedirs("data", exist_ok=True)
     async with async_playwright() as p:
+        start_time_dt = datetime.now()
+        start_time = time.time()
         browser = await p.chromium.launch(
             headless=config_parser.HEADLESS,
             args=[
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
                 "--disable-gpu",
-                "--disable-dev-shm-usage=false", 
+                "--disable-dev-shm-usage=true", 
             ]
         )
 
         semaphore = asyncio.Semaphore(3)
         flat_ids = set()
 
-        date_str = datetime.now().strftime("%Y-%m-%d")
+        date_str = start_time_dt.strftime("%Y-%m-%d")
 
         final_local = f"data/flats_{date_str}.jsonl"
         temp_local = f"data/flats_{date_str}_temp.jsonl"
@@ -130,15 +134,27 @@ async def main():
         tasks = [sem_task(u) for u in config_parser.URLS]
         await asyncio.gather(*tasks, return_exceptions=True)
 
+        await browser.close()
+        logger.info(f"Спарсено за {time.time() - start_time}. Квартир: {len(flat_ids)}")
+
         if os.path.exists(temp_local):
             os.replace(temp_local, final_local)
-            logger.info(f"Данные обновлены в {final_local}")
-
-        await browser.close()
-        return len(flat_ids)
+            
+            year = start_time_dt.strftime("%Y")
+            month = start_time_dt.strftime("%m")
+            day = start_time_dt.strftime("%d")
+            
+            s3_object_name = f"cian/year={year}/month={month}/day={day}/flats.jsonl"
+            
+            logger.info(f"Начинаю загрузку в S3: {s3_object_name}...")
+            
+            if upload_file_to_s3(final_local, s3_object_name):
+                logger.info(f"✅ Данные успешно сохранены в S3")
+                if os.path.exists(final_local):
+                    os.remove(final_local) 
+                    logger.info(f"Локальный файл удален.")
+            else:
+                logger.error("❌ Ошибка при загрузке в S3. Файл оставлен локально: " + final_local)
 
 if __name__ == "__main__":
-    start_time = time.time()
-    flats_count = asyncio.run(main())
-    duration = time.time() - start_time
-    logger.info(f"Спарсено за {duration}. Квартир: {flats_count}")
+    asyncio.run(main())
