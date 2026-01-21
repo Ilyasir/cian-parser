@@ -1,7 +1,9 @@
 import pendulum
 from airflow import DAG
 from airflow.models import Variable
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.docker.operators.docker import DockerOperator
+from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
 
 # Конфигурация DAG
@@ -12,7 +14,9 @@ DAG_ID = "raw_from_parser_to_s3"
 ACCESS_KEY = Variable.get("access_key")
 SECRET_KEY = Variable.get("secret_key")
 
-LONG_DESCRIPTION = "LONG_DESCRIPTION"
+LONG_DESCRIPTION = """
+# LONG DESCRIPTION
+"""
 
 SHORT_DESCRIPTION = "Запуск парсера в Docker контейнере и сохранение в S3"
 
@@ -25,7 +29,7 @@ default_args = {
 
 with DAG(
     dag_id=DAG_ID,
-    schedule_interval="0 5 * * *",
+    schedule_interval="0 1 * * *",
     default_args=default_args,
     catchup=False,
     max_active_tasks=1,
@@ -55,6 +59,7 @@ with DAG(
             'S3_ENDPOINT': 'http://minio:9000',
             'MINIO_BUCKET_NAME': 'raw-data',
             'TZ': 'Europe/Moscow',
+            'EXECUTION_DATE': "{{ data_interval_start.in_timezone('Europe/Moscow').format('YYYY-MM-DD') }}",
         }
     )
 

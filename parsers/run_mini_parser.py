@@ -23,80 +23,92 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename):
     page = await context.new_page()
     await block_heavy_resources(page)
 
-    try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+    
+    await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+    
+    if await page.locator(config_parser.CAPCHA_BLOCK_TEXT).count() > 0:
+        logger.error(f"❌ БЛОКИРОВКА ИЛИ КАПЧА: {url}")
+        raise Exception(f"Капча на {url}")
         
-        for page_num in range(60):
-            content = await page.content()
-            soup = BeautifulSoup(content, 'html.parser')
-            
-            cards = soup.find_all("article", {"data-name": "CardComponent"}) 
-            cards_count = len(cards)
+    for page_num in range(60):
+        content = await page.content()
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        cards = soup.find_all("article", {"data-name": "CardComponent"}) 
+        cards_count = len(cards)
 
-            logger.info(f"🔎 Обрабатываю страницу {page_num + 1}. Квартир - {cards_count} \nURL: {url} ")
-            for card in cards:
-                try:
-                    link_el = card.find("a", href=True)
-                    if not link_el: continue
-                    link = link_el['href']
-                    cian_id = extract_cian_id(link)
+        logger.info(f"🔎 Обрабатываю страницу {page_num + 1}. Квартир - {cards_count}. URL: {url}")
+        for card in cards:
+            try:
+                link_el = card.find("a", href=True)
+                if not link_el: continue
+                link = link_el['href']
+                cian_id = extract_cian_id(link)
 
-                    if cian_id in flat_ids: continue
-                    
-                    price_el = card.find("span", {"data-mark": "MainPrice"})
-                    price_text = price_el.get_text() if price_el else None
+                if cian_id in flat_ids: continue
+                
+                price_el = card.find("span", {"data-mark": "MainPrice"})
+                price_text = price_el.get_text() if price_el else None
 
-                    title_el = card.find("span", {"data-mark": "OfferSubtitle"}) or \
-                               card.find("span", {"data-mark": "OfferTitle"})
-                    title = title_el.get_text() if title_el else None
+                title_el = card.find("span", {"data-mark": "OfferSubtitle"}) or \
+                            card.find("span", {"data-mark": "OfferTitle"})
+                title = title_el.get_text() if title_el else None
 
-                    geo_labels = card.find_all("a", {"data-name": "GeoLabel"})
-                    all_geo_texts = [g.get_text() for g in geo_labels]
-                    address = ", ".join(all_geo_texts)
+                geo_labels = card.find_all("a", {"data-name": "GeoLabel"})
+                all_geo_texts = [g.get_text() for g in geo_labels]
+                address = ", ".join(all_geo_texts)
 
-                    metro_container = card.find("div", {"data-name": "SpecialGeo"})
-                    metro = None
-                    if metro_container:
-                        metro = metro_container.get_text()
+                metro_container = card.find("div", {"data-name": "SpecialGeo"})
+                metro = None
+                if metro_container:
+                    metro = metro_container.get_text()
 
-                    flat_data = {
-                        "id": cian_id,
-                        "link": link,
-                        "title": title,
-                        "price": price_text,
-                        "address": address,
-                        "metro": metro,
-                        "parsed_at": datetime.now().isoformat()
-                    }
+                flat_data = {
+                    "id": cian_id,
+                    "link": link,
+                    "title": title,
+                    "price": price_text,
+                    "address": address,
+                    "metro": metro,
+                    "parsed_at": datetime.now().isoformat()
+                }
 
-                    await save_to_jsonl(flat_data, filename)
-                    flat_ids.add(cian_id)
+                await save_to_jsonl(flat_data, filename)
+                flat_ids.add(cian_id)
 
-                except Exception as e:
-                    logger.error(f"❌ Ошибка при парсинге URL: {url}. На странице: {page_num + 1}. {e}")
-                    continue
+            except Exception as e:
+                logger.error(f"❌ Ошибка при парсинге URL: {url}. На странице: {page_num + 1}. {e}")
+                continue
 
-            if page_num + 1 < 60:
-                try:
-                    next_button = page.locator("nav[data-name='Pagination'] a").filter(has_text="Дальше")
-                    if await next_button.count() > 0:
-                        await next_button.click()
-                        await page.wait_for_load_state("domcontentloaded")
-                        await asyncio.sleep(random.uniform(1.5, 2.5))
-                    else:
-                        break
-                except Exception:
-                    logger.warning(f"⚠️ Не нашел кнопку 'Дальше' на странице {page_num + 1}")
+        if page_num + 1 < 60:
+            try:
+                next_button = page.locator("nav[data-name='Pagination'] a").filter(has_text="Дальше")
+                if await next_button.count() > 0:
+                    await next_button.click()
+                    await page.wait_for_load_state("domcontentloaded")
+                    await asyncio.sleep(random.uniform(1.5, 2.5))
+                else:
                     break
-    finally:
-        logger.info(f"✅ Завершен сбор с URL: {url}")
-        await context.close()
+            except Exception:
+                logger.warning(f"⚠️ Не нашел кнопку 'Дальше' на странице {page_num + 1}")
+                break
+
+    logger.info(f"✅ Завершен сбор с URL: {url}")
+    await context.close()
 
 
 async def main():
     os.makedirs("data", exist_ok=True)
-    async with async_playwright() as p:
+
+    env_date = os.getenv("EXECUTION_DATE")
+    if env_date:
+        start_time_dt = datetime.strptime(env_date, "%Y-%m-%d")
+        logger.info(f"Использую дату из Airflow: {env_date}")
+    else:
         start_time_dt = datetime.now()
+        logger.info(f"Дата из Airflow не передана, использую текущую: {start_time_dt.strftime('%Y-%m-%d')}")
+
+    async with async_playwright() as p:
         start_time = time.time()
         browser = await p.chromium.launch(
             headless=config_parser.HEADLESS,
@@ -135,7 +147,7 @@ async def main():
         await asyncio.gather(*tasks, return_exceptions=True)
 
         await browser.close()
-        logger.info(f"Спарсено за {time.time() - start_time}. Квартир: {len(flat_ids)}")
+        logger.info(f"✅ Парсинг завершен. Спарсено за {time.time() - start_time}. Квартир: {len(flat_ids)}")
 
         if os.path.exists(temp_local):
             os.replace(temp_local, final_local)
@@ -146,13 +158,10 @@ async def main():
             
             s3_object_name = f"cian/year={year}/month={month}/day={day}/flats.jsonl"
             
-            logger.info(f"Начинаю загрузку в S3: {s3_object_name}...")
-            
             if upload_file_to_s3(final_local, s3_object_name):
-                logger.info(f"✅ Данные успешно сохранены в S3")
+                logger.info(f"✅ Данные успешно сохранены в S3: {s3_object_name}")
                 if os.path.exists(final_local):
                     os.remove(final_local) 
-                    logger.info(f"Локальный файл удален.")
             else:
                 logger.error("❌ Ошибка при загрузке в S3. Файл оставлен локально: " + final_local)
 
