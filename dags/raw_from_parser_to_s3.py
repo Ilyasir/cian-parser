@@ -1,3 +1,4 @@
+import logging
 import pendulum
 from airflow import DAG
 from airflow.models import Variable
@@ -5,6 +6,7 @@ from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
+from airflow.exceptions import AirflowFailException
 
 # Конфигурация DAG
 OWNER = "ilyas"
@@ -26,6 +28,31 @@ default_args = {
     'retries': 3,
     "retry_delay": pendulum.duration(hours=1),
 }
+
+def check_file_in_s3(data_interval_start):
+    dt = data_interval_start.in_timezone('Europe/Moscow')
+    year = dt.year
+    month = dt.strftime('%m')
+    day = dt.strftime('%d')
+    
+    s3_key = f"cian/year={year}/month={month}/day={day}/flats.jsonl"
+    bucket_name = 'raw-data'
+    
+    hook = S3Hook(aws_conn_id='s3_conn')
+    
+    if not hook.check_for_key(s3_key, bucket_name):
+        logging.error(f"❌ Файл {s3_key} не найден в бакете {bucket_name}!")
+        raise AirflowFailException("Файл не найден!")
+
+    file_obj = hook.get_key(s3_key, bucket_name)
+    file_size = file_obj.content_length
+    
+    if file_size < 1000000:
+        logging.warning(f"⚠️ Файл {s3_key} найден, но он маленький ({file_size} байт)!")
+        raise AirflowFailException(f"Размер файла слишком мал!")
+    
+    logging.info(f"✅ Проверка пройдена! Файл найден, размер: {round(file_size / 1000000, 1)} MB.")
+
 
 with DAG(
     dag_id=DAG_ID,
@@ -63,8 +90,13 @@ with DAG(
         }
     )
 
+    check_data = PythonOperator(
+        task_id='check_data_quality',
+        python_callable=check_file_in_s3,
+    )
+
     end = EmptyOperator(
         task_id="end",
     )
 
-    start >> run_parser >> end
+    start >> run_parser >> check_data >> end

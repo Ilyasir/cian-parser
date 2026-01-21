@@ -35,9 +35,8 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename):
         soup = BeautifulSoup(content, 'html.parser')
         
         cards = soup.find_all("article", {"data-name": "CardComponent"}) 
-        cards_count = len(cards)
 
-        logger.info(f"🔎 Обрабатываю страницу {page_num + 1}. Квартир - {cards_count}. URL: {url}")
+        logger.info(f"🔎 Квартир спарсено - {len(flat_ids)}. Обрабатываю страницу {page_num + 1}. URL: {url}")
         for card in cards:
             try:
                 link_el = card.find("a", href=True)
@@ -147,7 +146,7 @@ async def main():
         await asyncio.gather(*tasks, return_exceptions=True)
 
         await browser.close()
-        logger.info(f"✅ Парсинг завершен. Спарсено за {time.time() - start_time}. Квартир: {len(flat_ids)}")
+        logger.info(f"✅ Парсинг завершен. Спарсено {len(flat_ids)} квартир за {round(time.time() - start_time)} сек.")
 
         if os.path.exists(temp_local):
             os.replace(temp_local, final_local)
