@@ -62,6 +62,9 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename):
                 if metro_container:
                     metro = metro_container.get_text()
 
+                desc_el = card.find('div', {'data-name': 'Description'})
+                description = desc_el.get_text(strip=True) if desc_el else None
+
                 flat_data = {
                     "id": cian_id,
                     "link": link,
@@ -69,7 +72,8 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename):
                     "price": price_text,
                     "address": address,
                     "metro": metro,
-                    "parsed_at": datetime.now().isoformat()
+                    "parsed_at": datetime.now().isoformat(),
+                    "description": description
                 }
 
                 await save_to_jsonl(flat_data, filename)

@@ -12,32 +12,43 @@ CAPCHA_BLOCK_TEXT: str = "text=Кажется, у вас включён VPN" # �
 
 # ссылки на категории квартир ( 0 - студии, 1 - однушки, 2 - двушки, и т.д.)
 URLS: list[str] = [
-   "https://www.cian.ru/cat.php?deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&object_type%5B0%5D=1&offer_type=flat&region=1&room9=1&sort=creation_date_desc",
-
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=12200000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room1=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=15000000&minprice=12200000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room1=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=20000000&minprice=15000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room1=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&minprice=20000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room1=1&sort=creation_date_desc",
-
-    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=15000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room2=1&sort=creation_date_desc",
-    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=18000000&minprice=15000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room2=1&sort=creation_date_desc",
-    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=22000000&minprice=18000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room2=1&sort=creation_date_desc",
-    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=27000000&minprice=22000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room2=1&sort=creation_date_desc",
-    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=36000000&minprice=27000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room2=1&sort=creation_date_desc",
-    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&minprice=36000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room2=1&sort=creation_date_desc",
-
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=20000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room3=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=25000000&minprice=20000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room3=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=33000000&minprice=25000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room3=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=44000000&minprice=33000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room3=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=67000000&minprice=44000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room3=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&minprice=67000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room3=1&sort=creation_date_desc",
-
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&maxprice=75000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room4=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?currency=2&deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&minprice=75000000&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room4=1&sort=creation_date_desc",
-    
-   "https://www.cian.ru/cat.php?deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room5=1&sort=creation_date_desc",
-   "https://www.cian.ru/cat.php?deal_type=sale&electronic_trading=2&engine_version=2&flat_share=2&include_new_moscow=0&object_type%5B0%5D=1&offer_type=flat&only_flat=1&region=1&room6=1&sort=creation_date_desc"
+    # Студии
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=11000000&object_type%5B0%5D=1&offer_type=flat&region=1&room9=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&minprice=11000000&object_type%5B0%5D=1&offer_type=flat&region=1&room9=1&sort=creation_date_desc",
+    # 1 комн.
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=11500000&object_type%5B0%5D=1&offer_type=flat&region=1&room1=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=13500000&minprice=11500000&object_type%5B0%5D=1&offer_type=flat&region=1&room1=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=16000000&minprice=13500000&object_type%5B0%5D=1&offer_type=flat&region=1&room1=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=21500000&minprice=16000000&object_type%5B0%5D=1&offer_type=flat&region=1&room1=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&minprice=21500000&object_type%5B0%5D=1&offer_type=flat&region=1&room1=1&sort=creation_date_desc",
+    # 2 комн.
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=14000000&object_type%5B0%5D=1&offer_type=flat&region=1&room2=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=16400000&minprice=14000000&object_type%5B0%5D=1&offer_type=flat&region=1&room2=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=18800000&minprice=16400000&object_type%5B0%5D=1&offer_type=flat&region=1&room2=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=22000000&minprice=18800000&object_type%5B0%5D=1&offer_type=flat&region=1&room2=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=25800000&minprice=22000000&object_type%5B0%5D=1&offer_type=flat&region=1&room2=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=32000000&minprice=25800000&object_type%5B0%5D=1&offer_type=flat&region=1&room2=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=44500000&minprice=32000000&object_type%5B0%5D=1&offer_type=flat&region=1&room2=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&minprice=44500000&object_type%5B0%5D=1&offer_type=flat&region=1&room2=1&sort=creation_date_desc",
+    # 3 комн.
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=19000000&object_type%5B0%5D=1&offer_type=flat&region=1&room3=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=24000000&minprice=19000000&object_type%5B0%5D=1&offer_type=flat&region=1&room3=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=29000000&minprice=24000000&object_type%5B0%5D=1&offer_type=flat&region=1&room3=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=37000000&minprice=29000000&object_type%5B0%5D=1&offer_type=flat&region=1&room3=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=47000000&minprice=37000000&object_type%5B0%5D=1&offer_type=flat&region=1&room3=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=64000000&minprice=47000000&object_type%5B0%5D=1&offer_type=flat&region=1&room3=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=100000000&minprice=64000000&object_type%5B0%5D=1&offer_type=flat&region=1&room3=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&minprice=100000000&object_type%5B0%5D=1&offer_type=flat&region=1&room3=1&sort=creation_date_desc",
+    # 4 комн.
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=64000000&object_type%5B0%5D=1&offer_type=flat&region=1&room4=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&maxprice=120000000&minprice=64000000&object_type%5B0%5D=1&offer_type=flat&region=1&room4=1&sort=creation_date_desc",
+    "https://www.cian.ru/cat.php?currency=2&deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&minprice=120000000&object_type%5B0%5D=1&offer_type=flat&region=1&room4=1&sort=creation_date_desc",
+    # 5 комн.
+    "https://www.cian.ru/cat.php?deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&object_type%5B0%5D=1&offer_type=flat&region=1&room5=1&sort=creation_date_desc",
+    # 6 комн.
+    "https://www.cian.ru/cat.php?deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&object_type%5B0%5D=1&offer_type=flat&region=1&room6=1&sort=creation_date_desc",
+    # Своб. планировка
+    "https://www.cian.ru/cat.php?deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&object_type%5B0%5D=1&offer_type=flat&region=1&room7=1&sort=creation_date_desc",
 ]
 
 HEADLESS: bool = True # режим запуска браузера (безголовый или с интерфейсом)
