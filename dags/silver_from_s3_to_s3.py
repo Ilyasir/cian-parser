@@ -39,14 +39,9 @@ def get_and_transform_raw_data_to_silver_s3(**context):
     raw_s3_path = f"s3://{LAYER_SOURCE}/{SOURCE}/year={year}/month={month}/day={day}/flats.jsonl"
     silver_s3_path = f"s3://{LAYER_TARGET}/{SOURCE}/year={year}/month={month}/day={day}/flats.parquet"
 
-    # Читаем SQL из файла
-    with open('dags/sql/transform_silver.sql', 'r') as f:
-        sql_template = f.read()
-
     con = duckdb.connect()
-
-    sql_query = f"""
-        SET TIMEZONE='Europe/Moscow';
+    # Подключение к S3
+    connect_sql = f"""
         INSTALL httpfs;
         LOAD httpfs;
         SET s3_url_style = 'path';
@@ -54,14 +49,29 @@ def get_and_transform_raw_data_to_silver_s3(**context):
         SET s3_access_key_id = '{ACCESS_KEY}';
         SET s3_secret_access_key = '{SECRET_KEY}';
         SET s3_use_ssl = FALSE;
-
-        {sql_template.format(raw_path=raw_s3_path, silver_path=silver_s3_path)}
     """
+    con.execute(connect_sql)
 
-    con.execute(sql_query)
+    raw_count = con.execute(f"SELECT count(*) FROM read_json_auto('{raw_s3_path}')").fetchone()[0]
+    logging.info(f"📊 Входящие данные (raw): {raw_count} строк.")
+
+    # Читаем SQL из файла
+    with open('dags/sql/transform_silver.sql', 'r') as f:
+        sql_template = f.read()
+    con.execute(
+        sql_template.format(raw_path=raw_s3_path, silver_path=silver_s3_path)
+    )
+
+    silver_count = con.execute(f"SELECT count(*) FROM read_parquet('{silver_s3_path}')").fetchone()[0]
+    logging.info(f"Данные после дедубликации (silver): {silver_count} строк.")
+    
+    diff = raw_count - silver_count
+    logging.info(f"Удалено дублей и мусора: {diff} строк ({(diff/raw_count)*100:.2f}%).")
+
     con.close()
 
     logging.info(f"✅ Файл успешно сохранен: {silver_s3_path}")
+    return {"raw_count": raw_count, "silver_count": silver_count, "removed": diff}
 
 
 with DAG(
