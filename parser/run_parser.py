@@ -34,7 +34,7 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename):
         
         cards = soup.find_all("article", {"data-name": "CardComponent"}) 
 
-        logger.info(f"🔎 Квартир спарсено - {len(flat_ids)}. Обрабатываю страницу {page_num + 1}. URL: {url}")
+        logger.info(f"🔎 Квартир - {len(flat_ids)}. Обрабатываю страницу {page_num + 1}. URL: {url}")
         for card in cards:
             try:
                 link_el = card.find("a", href=True)
@@ -43,23 +43,23 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename):
                 cian_id = extract_cian_id(link)
 
                 if cian_id in flat_ids: continue
-                
+                # цена
                 price_el = card.find("span", {"data-mark": "MainPrice"})
                 price_text = price_el.get_text() if price_el else None
-
+                # заголовок
                 title_el = card.find("span", {"data-mark": "OfferSubtitle"}) or \
                             card.find("span", {"data-mark": "OfferTitle"})
                 title = title_el.get_text() if title_el else None
-
+                # фулл адрес
                 geo_labels = card.find_all("a", {"data-name": "GeoLabel"})
                 all_geo_texts = [g.get_text() for g in geo_labels]
                 address = ", ".join(all_geo_texts)
-
+                # инфа о метро
                 metro_container = card.find("div", {"data-name": "SpecialGeo"})
                 metro = None
                 if metro_container:
                     metro = metro_container.get_text()
-
+                # описание
                 desc_el = card.find('div', {'data-name': 'Description'})
                 description = desc_el.get_text(strip=True) if desc_el else None
 
@@ -80,7 +80,7 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename):
             except Exception as e:
                 logger.error(f"❌ Ошибка при парсинге URL: {url}. На странице: {page_num + 1}. {e}")
                 continue
-
+        # переход на следующую страницу
         if page_num + 1 < config_parser.MAX_PAGES_TO_PARSE:
             success = await click_next_page(page, "nav[data-name='Pagination'] a")
             if not success:
@@ -122,7 +122,6 @@ async def main():
         final_local = f"data/flats_{date_str}.jsonl"
         temp_local = f"data/flats_{date_str}_temp.jsonl"
 
-        # Очищаем временный файл перед стартом
         if os.path.exists(temp_local):
             os.remove(temp_local)
 
