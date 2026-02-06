@@ -4,7 +4,7 @@ import pendulum
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
-from airflow.models import Variable
+from airflow.hooks.base import BaseHook
 from airflow.sensors.external_task import ExternalTaskSensor
 
 OWNER = "ilyas"
@@ -12,12 +12,6 @@ DAG_ID = "silver_from_s3_to_s3"
 
 LAYER_SOURCE = "raw"
 LAYER_TARGET = "silver"
-SOURCE = "cian"
-
-# S3
-ACCESS_KEY = Variable.get("access_key")
-SECRET_KEY = Variable.get("secret_key")
-S3_ENDPOINT = Variable.get("s3_endpoint")
 
 SHORT_DESCRIPTION = "Трансформация сырых JSONL данных в типизированный Parquet с помощью DuckDB и сохранение в S3"
 
@@ -29,43 +23,115 @@ default_args = {
 }
 
 
-def get_and_transform_raw_data_to_silver_s3(**context):
-    # Формируем полные пути для duckdb
+def get_and_transform_raw_data_to_silver_s3(**context) -> dict[str, int | float]:
+    s3_conn = BaseHook.get_connection("s3_conn")
+    # параметры подключения
+    access_key = s3_conn.login
+    secret_key = s3_conn.password
+    s3_endpoint = s3_conn.extra_dejson.get("endpoint_url")
+
+    # полные пути для duckdb
     dt = context["data_interval_start"].in_timezone('Europe/Moscow')
     year = dt.year
     month = dt.strftime('%m')
     day = dt.strftime('%d')
-    
-    raw_s3_path = f"s3://{LAYER_SOURCE}/{SOURCE}/year={year}/month={month}/day={day}/flats.jsonl"
-    silver_s3_path = f"s3://{LAYER_TARGET}/{SOURCE}/year={year}/month={month}/day={day}/flats.parquet"
+
+    raw_s3_path = f"s3://{LAYER_SOURCE}/cian/year={year}/month={month}/day={day}/flats.jsonl"
+    silver_s3_path = f"s3://{LAYER_TARGET}/cian/year={year}/month={month}/day={day}/flats.parquet"
 
     con = duckdb.connect()
-    # Подключение к S3
-    connect_sql = f"""
-        INSTALL httpfs;
+    con.execute(
+        f"""
+        INSTALL httpfs; -- расширение для работы с S3/HTTP
         LOAD httpfs;
         SET s3_url_style = 'path';
-        SET s3_endpoint = '{S3_ENDPOINT}';
-        SET s3_access_key_id = '{ACCESS_KEY}';
-        SET s3_secret_access_key = '{SECRET_KEY}';
+        SET s3_endpoint = '{s3_endpoint.replace("http://", "")}'; -- duckdb сам подставляет http://
+        SET s3_access_key_id = '{access_key}';
+        SET s3_secret_access_key = '{secret_key}';
         SET s3_use_ssl = FALSE;
-    """
-    con.execute(connect_sql)
-
-    raw_count = con.execute(f"SELECT count(*) FROM read_json_auto('{raw_s3_path}')").fetchone()[0]
-    logging.info(f"📊 Входящие данные (raw): {raw_count} строк.")
-
-    # Читаем SQL из файла
-    with open('dags/sql/transform_silver.sql', 'r') as f:
-        sql_template = f.read()
-    con.execute(
-        sql_template.format(raw_path=raw_s3_path, silver_path=silver_s3_path)
+        """
     )
 
-    silver_count = con.execute(f"SELECT count(*) FROM read_parquet('{silver_s3_path}')").fetchone()[0]
+    raw_count: int = con.execute(f"SELECT count(*) FROM read_json_auto('{raw_s3_path}')").fetchone()[0]
+    logging.info(f"📊 Входящие данные (raw): {raw_count} строк.")
+
+    logging.info(f"💻 Выполняю трансформацию: {raw_s3_path}")
+    con.execute(
+        f"""
+        COPY(
+        WITH raw_transformed AS (
+            SELECT
+                id::BIGINT as id,
+                link::TEXT as link,
+                title::VARCHAR as title,
+                CASE
+                    WHEN title ILIKE '%апартаменты%' THEN TRUE
+                    ELSE FALSE
+                END as is_apartament,
+                CASE
+                    WHEN title ILIKE '%студия%' THEN TRUE
+                    ELSE FALSE
+                END as is_studio,
+                -- площадь из заголовка, число перед м², запятую на точку поменяем
+                replace(NULLIF(regexp_extract(title, '(\d+[.,]?\d*)\s*м²', 1), ''), ',', '.')::NUMERIC(10, 2) as area,
+                -- комнатность (0 для студий и своб. планировок)
+                CASE 
+                    WHEN title ILIKE '%студия%' THEN 0
+                    WHEN title ILIKE '%своб%' THEN 0
+                    ELSE NULLIF(regexp_extract(title, '^(\d+)', 1), '')::INT
+                END as rooms_count,
+                -- этажи
+                NULLIF(regexp_extract(title, '(\d+)/\d+\s*этаж', 1), '')::INT as floor,
+                NULLIF(regexp_extract(title, '\d+/(\d+)\s*этаж', 1), '')::INT as total_floors,
+                -- цена, убираем валюту и пробелы 
+                regexp_replace(price, '[^0-9]', '', 'g')::BIGINT as price,
+                address::TEXT as address,
+                -- разбиваем адрес
+                trim(SPLIT_PART(address, ',', 1))::VARCHAR as city,
+                -- округ только заглавными
+                NULLIF(regexp_extract(address, '([А-Яа-я]+АО)', 1), '')::VARCHAR as okrug,
+                trim(SPLIT_PART(address, ',', 3))::VARCHAR as district,
+                CASE
+                    WHEN okrug IN ('НАО', 'ТАО') THEN TRUE
+                    ELSE FALSE
+                END as is_new_moscow,
+                -- вся инфа о метро
+                NULLIF(regexp_extract(metro, '^(.*?)\d+\s+минут', 1), '')::VARCHAR as metro_name,
+                NULLIF(regexp_extract(metro, '(\d+)\s+минут', 1), '')::INT as metro_min,
+                CASE
+                    WHEN metro LIKE '%пешком%' THEN 'walk'
+                    WHEN metro LIKE '%транс%' THEN 'transport'
+                END as metro_type,
+                -- время и описание
+                parsed_at::TIMESTAMP as parsed_at,
+                description::TEXT as description,
+                -- нормализованный адрес, ток для дедубликации
+                lower(regexp_replace(address, '[^а-яА-Я0-9]', '', 'g')) as norm_address
+            FROM read_json_auto('{raw_s3_path}')
+        ),
+        -- дедубликация по бизнес ключу (чистый адрес, этажи, кол-во комнат)
+        deduplicated AS (
+            SELECT *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY norm_address, floor, total_floors, rooms_count
+                    ORDER BY parsed_at DESC
+                ) as row_num
+            FROM raw_transformed
+            WHERE area IS NOT NULL -- выкидываем строки с битыми заголовками
+                AND price IS NOT NULL
+                AND okrug IS NOT NULL
+        )
+        -- сохраняем в Parquet, убирая не нужные колонки
+        SELECT * EXCLUDE (row_num, norm_address)
+        FROM deduplicated
+        WHERE row_num = 1 ) TO '{silver_s3_path}' (FORMAT PARQUET);
+        """
+    )
+    
+    silver_count: int = con.execute(f"SELECT count(*) FROM read_parquet('{silver_s3_path}')").fetchone()[0]
     logging.info(f"Данные после дедубликации (silver): {silver_count} строк.")
     
-    diff = raw_count - silver_count
+    diff: int = raw_count - silver_count
     logging.info(f"Удалено дублей и мусора: {diff} строк ({(diff/raw_count)*100:.2f}%).")
 
     con.close()
