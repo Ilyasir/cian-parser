@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 COPY parsers/requirements.txt .
-
+# скаиваем chromium для playwright, со всеми зависимостями
 RUN apt-get update && \
     pip install --no-cache-dir -r requirements.txt && \
     playwright install --with-deps chromium --only-shell && \
@@ -20,4 +20,4 @@ COPY parsers/ ./parsers/
 
 ENV PYTHONPATH=/app/parsers
 
-CMD ["python", "parsers/run_mini_parser.py"]
+CMD ["python", "parsers/run_parser.py"]

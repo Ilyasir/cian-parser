@@ -22,6 +22,7 @@ s3_client = boto3.client(
 )
 
 def upload_file_to_s3(file_path: str, object_name: str) -> bool:
+    """Загружает файл в S3. True при успешной загрузке, иначе False"""
     try:
         try:
             s3_client.head_bucket(Bucket=BUCKET_NAME)

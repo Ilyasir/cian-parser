@@ -9,10 +9,10 @@ def setup_logger():
 
     logger.setLevel(logging.DEBUG)
 
-    # Используем стандартный формат: Дата Время | Уровень | Сообщение
+    # Дата Время | Уровень | Сообщение
     formatter = logging.Formatter(
         "[%(asctime)s] %(levelname)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S" # Чтобы время было красивым
+        datefmt="%Y-%m-%d %H:%M:%S"
     )
 
     console_handler = logging.StreamHandler(sys.stdout)

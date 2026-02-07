@@ -1,12 +1,6 @@
-from pathlib import Path
-
-
-CONCURRENT_TASKS: int = 7  # максимальное количество одновременных задач парсинга(вкладок браузера)
-MAX_PAGES_TO_PARSE: int = 1 # максимальное количество страниц с объявлениями для парсинга в каждой категории
-PAGE_TIMEOUT: int = 40000 # время ожидания загрузки страницы (в миллисекундах)
-MIN_SLEEP: float = 2.0 # минимальная задержка между запросами к страницам (в секундах)
-MAX_SLEEP: float = 5.0 # максимальная задержка между запросами к страницам (в секундах)
-
+CONCURRENT_TASKS: int = 3  # максимальное количество одновременных задач парсинга(вкладок браузера)
+MAX_PAGES_TO_PARSE: int = 60 # максимальное количество страниц с объявлениями для парсинга в каждой категории
+HEADLESS: bool = True # режим запуска браузера (безголовый или с интерфейсом)
 CAPCHA_BLOCK_TEXT: str = "text=Кажется, у вас включён VPN" # текст, по которому определяется блокировка/капча
 
 # ссылки на категории квартир ( 0 - студии, 1 - однушки, 2 - двушки, и т.д.)
@@ -50,7 +44,6 @@ URLS: list[str] = [
     "https://www.cian.ru/cat.php?deal_type=sale&demolished_in_moscow_programm=0&electronic_trading=2&engine_version=2&flat_share=2&object_type%5B0%5D=1&offer_type=flat&region=1&room7=1&sort=creation_date_desc",
 ]
 
-HEADLESS: bool = True # режим запуска браузера (безголовый или с интерфейсом)
 # Заголовки для маскировки под реальный браузер
 DEFAULT_HEADERS: dict[str, str] = {
     "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -84,9 +77,3 @@ USER_AGENTS: list[str] = [
     "Mozilla/5.0 (X11; Debian; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0"
 ]
-
-
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-# Папка для данных
-DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
