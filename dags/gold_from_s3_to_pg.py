@@ -1,9 +1,10 @@
 import logging
+
 import pendulum
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.operators.empty import EmptyOperator
 from airflow.hooks.base import BaseHook
+from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
 from airflow.sensors.external_task import ExternalTaskSensor
 from utils.duckdb import get_duckdb_s3_connection
 
@@ -16,17 +17,19 @@ LAYER_TARGET = "gold"
 SHORT_DESCRIPTION = ""
 
 default_args = {
-    'owner': OWNER,
+    "owner": OWNER,
     "start_date": pendulum.datetime(2026, 1, 18, tz="Europe/Moscow"),
-    'retries': 2,
+    "retries": 2,
     "retry_delay": pendulum.duration(minutes=10),
 }
 
 
 def load_silver_data_from_s3_to_pg(**context) -> None:
-    dt = context["data_interval_start"].in_timezone('Europe/Moscow')
-    silver_s3_key = f"s3://{LAYER_SOURCE}/cian/year={dt.year}/month={dt.strftime('%m')}/day={dt.strftime('%d')}/flats.parquet"
-    
+    dt = context["data_interval_start"].in_timezone("Europe/Moscow")
+    silver_s3_key = (
+        f"s3://{LAYER_SOURCE}/cian/year={dt.year}/month={dt.strftime('%m')}/day={dt.strftime('%d')}/flats.parquet"
+    )
+
     pg_conn = BaseHook.get_connection("pg_conn")
     con = get_duckdb_s3_connection("s3_conn")
 
@@ -70,14 +73,13 @@ def load_silver_data_from_s3_to_pg(**context) -> None:
 
 with DAG(
     dag_id=DAG_ID,
-    schedule_interval="0 1 * * *",
+    schedule="0 1 * * *",
     default_args=default_args,
     catchup=False,
     max_active_runs=1,
     tags=["pg", "gold"],
     description=SHORT_DESCRIPTION,
 ) as dag:
-
     start = EmptyOperator(
         task_id="start",
     )
@@ -88,12 +90,11 @@ with DAG(
         allowed_states=["success"],
         mode="reschedule",
         timeout=36000,
-        poke_interval=60
+        poke_interval=60,
     )
 
-    load_silver_to_stage=PythonOperator(
-        task_id="load_silver_to_stage",
-        python_callable=load_silver_data_from_s3_to_pg
+    load_silver_to_stage = PythonOperator(
+        task_id="load_silver_to_stage", python_callable=load_silver_data_from_s3_to_pg
     )
 
     end = EmptyOperator(

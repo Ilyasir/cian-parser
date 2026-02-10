@@ -1,8 +1,9 @@
 import logging
+
 import pendulum
 from airflow import DAG
-from airflow.operators.python import PythonOperator
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
 from airflow.sensors.external_task import ExternalTaskSensor
 from utils.duckdb import get_duckdb_s3_connection
 
@@ -12,21 +13,27 @@ DAG_ID = "silver_from_s3_to_s3"
 LAYER_SOURCE = "raw"
 LAYER_TARGET = "silver"
 
-SHORT_DESCRIPTION = "DAG для трансформации данных из слоя raw в слой silver, из jsonl в типизированный parquet и сохранение в S3"
+SHORT_DESCRIPTION = (
+    "DAG для трансформации данных из слоя raw в слой silver, из jsonl втипизированный parquet и сохранение в S3"
+)
 
 default_args = {
-    'owner': OWNER,
+    "owner": OWNER,
     "start_date": pendulum.datetime(2026, 1, 18, tz="Europe/Moscow"),
-    'retries': 2,
+    "retries": 2,
     "retry_delay": pendulum.duration(minutes=10),
 }
 
 
 def get_and_transform_raw_data_to_silver_s3(**context) -> dict[str, int]:
     # Формируем путь к файлу в S3
-    dt = context["data_interval_start"].in_timezone('Europe/Moscow')
-    raw_s3_key = f"s3://{LAYER_SOURCE}/cian/year={dt.year}/month={dt.strftime('%m')}/day={dt.strftime('%d')}/flats.jsonl"
-    silver_s3_key = f"s3://{LAYER_TARGET}/cian/year={dt.year}/month={dt.strftime('%m')}/day={dt.strftime('%d')}/flats.parquet"
+    dt = context["data_interval_start"].in_timezone("Europe/Moscow")
+    raw_s3_key = (
+        f"s3://{LAYER_SOURCE}/cian/year={dt.year}/month={dt.strftime('%m')}/day={dt.strftime('%d')}/flats.jsonl"
+    )
+    silver_s3_key = (
+        f"s3://{LAYER_TARGET}/cian/year={dt.year}/month={dt.strftime('%m')}/day={dt.strftime('%d')}/flats.parquet"
+    )
 
     con = get_duckdb_s3_connection("s3_conn")
 
@@ -107,28 +114,27 @@ def get_and_transform_raw_data_to_silver_s3(**context) -> dict[str, int]:
         WHERE row_num = 1 ) TO '{silver_s3_key}' (FORMAT PARQUET);
         """
     )
-    
+
     silver_count: int = con.execute(f"SELECT count(*) FROM read_parquet('{silver_s3_key}')").fetchone()[0]
     logging.info(f"Данные после дедубликации (silver): {silver_count} строк.")
-    
+
     con.close()
 
-    diff: int = raw_count - silver_count # сколько строк удалилось в процессе трансформации
-    logging.info(f"Удалено дублей и мусора: {diff} строк ({(diff/raw_count)*100:.2f}%).")
+    diff: int = raw_count - silver_count  # сколько строк удалилось в процессе трансформации
+    logging.info(f"Удалено дублей и мусора: {diff} строк ({(diff / raw_count) * 100:.2f}%).")
     logging.info(f"✅ Файл успешно сохранен: {silver_s3_key}")
     return {"raw_count": raw_count, "silver_count": silver_count, "removed": diff}
 
 
 with DAG(
     dag_id=DAG_ID,
-    schedule_interval="0 1 * * *",
+    schedule="0 1 * * *",
     default_args=default_args,
     catchup=False,
     max_active_runs=1,
     tags=["s3", "silver"],
     description=SHORT_DESCRIPTION,
 ) as dag:
-
     start = EmptyOperator(
         task_id="start",
     )
@@ -137,14 +143,13 @@ with DAG(
         task_id="sensor_on_raw_layer",
         external_dag_id="raw_from_parser_to_s3",
         allowed_states=["success"],
-        mode="reschedule", # чтобы не занимать воркер во время ожидания
+        mode="reschedule",  # чтобы не занимать воркер во время ожидания
         timeout=36000,  # длительность работы сенсора
-        poke_interval=60  # частота проверки
+        poke_interval=60,  # частота проверки
     )
 
     transform_to_silver = PythonOperator(
-        task_id="transform_to_silver",
-        python_callable=get_and_transform_raw_data_to_silver_s3
+        task_id="transform_to_silver", python_callable=get_and_transform_raw_data_to_silver_s3
     )
 
     end = EmptyOperator(

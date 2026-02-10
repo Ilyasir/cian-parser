@@ -1,5 +1,7 @@
 import json
+
 import aiofiles
+
 
 async def save_to_jsonl(item: dict, filename: str) -> None:
     line = json.dumps(item, ensure_ascii=False) + "\n"

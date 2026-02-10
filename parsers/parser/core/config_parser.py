@@ -1,7 +1,7 @@
 CONCURRENT_TASKS: int = 3  # максимальное количество одновременных задач парсинга(вкладок браузера)
-MAX_PAGES_TO_PARSE: int = 60 # максимальное количество страниц с объявлениями для парсинга в каждой категории
-HEADLESS: bool = True # режим запуска браузера (безголовый или с интерфейсом)
-CAPCHA_BLOCK_TEXT: str = "text=Кажется, у вас включён VPN" # текст, по которому определяется блокировка/капча
+MAX_PAGES_TO_PARSE: int = 60  # максимальное количество страниц с объявлениями для парсинга в каждой категории
+HEADLESS: bool = True  # режим запуска браузера (безголовый или с интерфейсом)
+CAPCHA_BLOCK_TEXT: str = "text=Кажется, у вас включён VPN"  # текст, по которому определяется блокировка/капча
 
 # ссылки на категории квартир ( 0 - студии, 1 - однушки, 2 - двушки, и т.д.)
 URLS: list[str] = [
@@ -64,16 +64,13 @@ USER_AGENTS: list[str] = [
     "Mozilla/5.0 (Windows NT 11.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
     "Mozilla/5.0 (Windows NT 10.0; rv:115.0) Gecko/20100101 Firefox/115.0",
-
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.7; rv:133.0) Gecko/20100101 Firefox/133.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.1; rv:132.0) Gecko/20100101 Firefox/132.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.7; rv:128.0) Gecko/20100101 Firefox/128.0",
-    
     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0",
     "Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0",
     "Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
     "Mozilla/5.0 (X11; Linux i686; rv:130.0) Gecko/20100101 Firefox/130.0",
-    
     "Mozilla/5.0 (X11; Debian; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
 ]

@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 120 # чтобы не ругался на мои длинные строки
+target-version = "py312" # версия питона
+
+# AIR для проверки дагов
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "AIR", "ASYNC"]
+
+# чтобы не ругался на вторую версию Airflow
+ignore = [
+    "AIR311",
+    "AIR312",
+    "ASYNC240", # не ругался на os либу в асинхронных функциях
+]

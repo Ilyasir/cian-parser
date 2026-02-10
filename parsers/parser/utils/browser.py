@@ -1,6 +1,7 @@
 import asyncio
 import random
 import re
+
 from playwright.async_api import Page
 
 
@@ -27,7 +28,7 @@ async def block_heavy_resources(page: Page):
         "mc.yandex.ru",
         "facebook.net",
         "ads",
-        "pda.cian.ru/dev/metrics"
+        "pda.cian.ru/dev/metrics",
     ]
 
     def route_handler(route):
@@ -42,14 +43,14 @@ async def block_heavy_resources(page: Page):
         return route.continue_()
 
     await page.route("**/*", route_handler)
-    
+
 
 def extract_cian_id(url: str) -> int | None:
     """Извлекает ID из ссылки и возвращает его как целое число (int)."""
     if not url:
         return None
-    match = re.search(r'/(\d{7,15})', url)
-    
+    match = re.search(r"/(\d{7,15})", url)
+
     if match:
         return int(match.group(1))
     return None

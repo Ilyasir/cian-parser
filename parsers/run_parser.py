@@ -1,15 +1,16 @@
-import os
 import asyncio
+import os
 import random
 import time
 from datetime import datetime
-from playwright.async_api import async_playwright
+
 from bs4 import BeautifulSoup
 from parser.core import config_parser
-from parser.utils.files import save_to_jsonl
-from parser.utils.browser import block_heavy_resources, click_next_page, extract_cian_id
 from parser.core.logger import setup_logger
+from parser.utils.browser import block_heavy_resources, click_next_page, extract_cian_id
+from parser.utils.files import save_to_jsonl
 from parser.utils.s3_client import upload_file_to_s3
+from playwright.async_api import async_playwright
 
 logger = setup_logger()
 
@@ -22,8 +23,7 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename: str
     - url: URL страницы для парсинга
     - filename: имя файла для сохранения результатов"""
     context = await browser.new_context(
-        user_agent=random.choice(config_parser.USER_AGENTS),
-        extra_http_headers=config_parser.DEFAULT_HEADERS
+        user_agent=random.choice(config_parser.USER_AGENTS), extra_http_headers=config_parser.DEFAULT_HEADERS
     )
     page = await context.new_page()
     await block_heavy_resources(page)
@@ -37,30 +37,31 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename: str
     for page_num in range(config_parser.MAX_PAGES_TO_PARSE):
         # получаем html страницы и парсим его через bs4
         content = await page.content()
-        soup = BeautifulSoup(content, 'lxml')
+        soup = BeautifulSoup(content, "lxml")
 
         # находим все карточки с квартирами на странице
-        cards = soup.find_all("article", {"data-name": "CardComponent"}) 
+        cards = soup.find_all("article", {"data-name": "CardComponent"})
 
         logger.info(f"🔎 Квартир спарсено - {len(flat_ids)}. Обрабатываю страницу {page_num + 1}. URL: {url}")
         # проходим по каждой карточке и извлекаем данные
         for card in cards:
             try:
                 link_el = card.find("a", href=True)
-                if not link_el: # без ссылки нет смысла парсить карточку, скип
+                if not link_el:  # без ссылки нет смысла парсить карточку, скип
                     continue
 
-                link = link_el['href']
+                link = link_el["href"]
                 cian_id = extract_cian_id(link)
                 # скип, если уже парсили квартиру с таким id
-                if cian_id in flat_ids: 
+                if cian_id in flat_ids:
                     continue
                 # цена
                 price_el = card.find("span", {"data-mark": "MainPrice"})
                 price_text = price_el.get_text() if price_el else None
                 # заголовок
-                title_el = card.find("span", {"data-mark": "OfferSubtitle"}) or \
-                            card.find("span", {"data-mark": "OfferTitle"})
+                title_el = card.find("span", {"data-mark": "OfferSubtitle"}) or card.find(
+                    "span", {"data-mark": "OfferTitle"}
+                )
                 title = title_el.get_text() if title_el else None
                 # фулл адрес
                 geo_labels = card.find_all("a", {"data-name": "GeoLabel"})
@@ -72,7 +73,7 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename: str
                 if metro_container:
                     metro = metro_container.get_text()
                 # описание обьявления, если есть
-                desc_el = card.find('div', {'data-name': 'Description'})
+                desc_el = card.find("div", {"data-name": "Description"})
                 description = desc_el.get_text(strip=True) if desc_el else None
 
                 flat_data = {
@@ -83,9 +84,9 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename: str
                     "address": address,
                     "metro": metro,
                     "parsed_at": datetime.now().isoformat(),
-                    "description": description
+                    "description": description,
                 }
-                
+
                 # сохраняем в файл и добавляем id в множество
                 await save_to_jsonl(flat_data, filename)
                 flat_ids.add(cian_id)
@@ -101,7 +102,7 @@ async def collect_flats_from_url(browser, flat_ids: set, url: str, filename: str
                 break
 
     logger.info(f"✅ Завершен сбор с URL: {url}")
-    await context.close() # когда спарчили URL, закрываем вкладку браузера
+    await context.close()  # когда спарчили URL, закрываем вкладку браузера
 
 
 async def main():
@@ -116,16 +117,11 @@ async def main():
         logger.info(f"Дата из Airflow не передана, использую текущую: {start_time_dt.strftime('%Y-%m-%d')}")
 
     async with async_playwright() as p:
-        start_time = time.time() # для измерения времени парсинга
+        start_time = time.time()  # для измерения времени парсинга
         browser = await p.chromium.launch(
             headless=config_parser.HEADLESS,
             # эти аргументы помогают работать в докере(без них много памяти жрет и может не работать)
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-gpu",
-                "--disable-http-cache"
-            ]
+            args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu", "--disable-http-cache"],
         )
         # ограничиваем колво одновременно открытых вкладок, чтобы не забанили
         semaphore = asyncio.Semaphore(config_parser.CONCURRENT_TASKS)
@@ -141,13 +137,9 @@ async def main():
         async def sem_task(url):
             async with semaphore:
                 # рандом задержка перед началом парсинга каждого URL
-                await asyncio.sleep(random.uniform(2, 5)) 
-                return await collect_flats_from_url(
-                    browser,
-                    flat_ids, 
-                    url,
-                    temp_local
-                )
+                await asyncio.sleep(random.uniform(2, 5))
+                return await collect_flats_from_url(browser, flat_ids, url, temp_local)
+
         # запускаем парсинг по всем URL параллельно, но с ограничением по семафору
         tasks = [sem_task(u) for u in config_parser.URLS]
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -155,22 +147,22 @@ async def main():
         await browser.close()
         logger.info(f"✅ Парсинг завершен. Спарсено {len(flat_ids)} квартир за {round(time.time() - start_time)} сек.")
 
-
         if os.path.exists(temp_local):
             os.replace(temp_local, final_local)
             # после сохранения локально, загружаем в S3 и удаляем локальный файл
             year = start_time_dt.strftime("%Y")
             month = start_time_dt.strftime("%m")
             day = start_time_dt.strftime("%d")
-            
+
             s3_object_name = f"cian/year={year}/month={month}/day={day}/flats.jsonl"
-            
+
             if upload_file_to_s3(final_local, s3_object_name):
                 logger.info(f"✅ Данные успешно сохранены в S3: {s3_object_name}")
                 if os.path.exists(final_local):
-                    os.remove(final_local) 
+                    os.remove(final_local)
             else:
                 logger.error("❌ Ошибка при загрузке в S3. Файл оставлен локально: " + final_local)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

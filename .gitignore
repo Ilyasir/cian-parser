@@ -8,6 +8,9 @@
 .vscode/
 .idea/
 
+# ruff
+.ruff_cache/
+
 # minio
 data/
 minio_data/
