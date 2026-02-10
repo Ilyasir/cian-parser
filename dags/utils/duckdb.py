@@ -12,9 +12,11 @@ def get_duckdb_s3_connection(conn_id: str = "s3_conn"):
     endpoint = s3_conn.extra_dejson.get("endpoint_url", "").replace("http://", "").replace("https://", "")
 
     con = duckdb.connect()
+    # загружаем расширения для работы с S3
+    con.execute("LOAD httpfs;")
+
     con.execute(f"""
-        INSTALL httpfs; -- расширение для работы с S3
-        LOAD httpfs;
+        SET TimeZone = 'Europe/Moscow';
         SET s3_url_style = 'path';
         SET s3_endpoint = '{endpoint}';
         SET s3_access_key_id = '{access_key}';

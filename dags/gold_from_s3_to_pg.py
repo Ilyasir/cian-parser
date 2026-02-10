@@ -36,9 +36,8 @@ def load_silver_data_from_s3_to_pg(**context) -> None:
     logging.info(f"💻 Загружаю данные из {silver_s3_key} в stage")
     con.execute(
         f"""
-        INSTALL postgres;
         LOAD postgres;
-        CREATE SECRET dwh_postgres (
+        CREATE SECRET IF NOT EXISTS dwh_postgres (
             TYPE postgres,
             HOST '{pg_conn.host}',
             PORT {pg_conn.port},

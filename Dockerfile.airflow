@@ -10,3 +10,10 @@ USER airflow
 
 COPY requirements.txt /requirements.txt
 RUN pip install --no-cache-dir -r /requirements.txt
+
+# yстановка расширений duckdb на этапе сборки образа
+RUN python -c "import duckdb; \
+    con = duckdb.connect(); \
+    con.execute('INSTALL httpfs;'); \
+    con.execute('INSTALL postgres;'); \
+    con.close();"
