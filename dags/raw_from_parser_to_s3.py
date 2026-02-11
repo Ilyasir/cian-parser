@@ -6,6 +6,7 @@ from airflow.exceptions import AirflowFailException
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
+from utils.datasets import RAW_DATASET_CIAN_FLATS
 from utils.duckdb import get_duckdb_s3_connection
 
 OWNER = "ilyas"
@@ -125,6 +126,7 @@ with DAG(
 
     end = EmptyOperator(
         task_id="end",
+        outlets=[RAW_DATASET_CIAN_FLATS],  # триггер для запуска следующего DAG
     )
 
     start >> run_parser >> check_data_quality >> end

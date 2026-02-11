@@ -5,7 +5,7 @@ from airflow import DAG
 from airflow.hooks.base import BaseHook
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
-from airflow.sensors.external_task import ExternalTaskSensor
+from utils.datasets import SILVER_DATASET_CIAN_FLATS
 from utils.duckdb import get_duckdb_s3_connection
 
 OWNER = "ilyas"
@@ -72,7 +72,7 @@ def load_silver_data_from_s3_to_pg(**context) -> None:
 
 with DAG(
     dag_id=DAG_ID,
-    schedule="0 1 * * *",
+    schedule=[SILVER_DATASET_CIAN_FLATS],
     default_args=default_args,
     catchup=False,
     max_active_runs=1,
@@ -83,15 +83,6 @@ with DAG(
         task_id="start",
     )
 
-    sensor_on_silver_layer = ExternalTaskSensor(
-        task_id="sensor_on_silver_layer",
-        external_dag_id="silver_from_s3_to_s3",
-        allowed_states=["success"],
-        mode="reschedule",
-        timeout=36000,
-        poke_interval=60,
-    )
-
     load_silver_to_stage = PythonOperator(
         task_id="load_silver_to_stage", python_callable=load_silver_data_from_s3_to_pg
     )
@@ -100,4 +91,4 @@ with DAG(
         task_id="end",
     )
 
-    start >> sensor_on_silver_layer >> load_silver_to_stage >> end
+    start >> load_silver_to_stage >> end

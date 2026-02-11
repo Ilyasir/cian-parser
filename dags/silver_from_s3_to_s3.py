@@ -4,7 +4,7 @@ import pendulum
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
-from airflow.sensors.external_task import ExternalTaskSensor
+from utils.datasets import RAW_DATASET_CIAN_FLATS, SILVER_DATASET_CIAN_FLATS
 from utils.duckdb import get_duckdb_s3_connection
 
 OWNER = "ilyas"
@@ -128,7 +128,7 @@ def get_and_transform_raw_data_to_silver_s3(**context) -> dict[str, int]:
 
 with DAG(
     dag_id=DAG_ID,
-    schedule="0 1 * * *",
+    schedule=[RAW_DATASET_CIAN_FLATS],  # как только обновится датасет raw запустится этот DAG
     default_args=default_args,
     catchup=False,
     max_active_runs=1,
@@ -139,21 +139,14 @@ with DAG(
         task_id="start",
     )
 
-    sensor_on_raw_layer = ExternalTaskSensor(
-        task_id="sensor_on_raw_layer",
-        external_dag_id="raw_from_parser_to_s3",
-        allowed_states=["success"],
-        mode="reschedule",  # чтобы не занимать воркер во время ожидания
-        timeout=36000,  # длительность работы сенсора
-        poke_interval=60,  # частота проверки
-    )
-
     transform_to_silver = PythonOperator(
-        task_id="transform_to_silver", python_callable=get_and_transform_raw_data_to_silver_s3
+        task_id="transform_to_silver",
+        python_callable=get_and_transform_raw_data_to_silver_s3,
     )
 
     end = EmptyOperator(
         task_id="end",
+        outlets=[SILVER_DATASET_CIAN_FLATS],
     )
 
-    start >> sensor_on_raw_layer >> transform_to_silver >> end
+    start >> transform_to_silver >> end
