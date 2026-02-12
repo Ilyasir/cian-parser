@@ -26,7 +26,7 @@ default_args = {
 
 
 def get_and_transform_raw_data_to_silver_s3(**context) -> dict[str, int]:
-    # Формируем путь к файлу в S3
+    """Очистка, дедубликация данных из слоя raw в parquet и сохранение в S3"""
     dt = context["data_interval_start"].in_timezone("Europe/Moscow")
     raw_s3_key = (
         f"s3://{LAYER_SOURCE}/cian/year={dt.year}/month={dt.strftime('%m')}/day={dt.strftime('%d')}/flats.jsonl"
@@ -48,7 +48,8 @@ def get_and_transform_raw_data_to_silver_s3(**context) -> dict[str, int]:
         WITH raw_transformed AS (
             SELECT
                 id::BIGINT as id,
-                link::TEXT as link,
+                -- укорачиваем ссылку
+                SPLIT_PART(link, '?', 1)::TEXT as link,
                 title::VARCHAR as title,
                 -- тип жилья
                 CASE
@@ -74,10 +75,14 @@ def get_and_transform_raw_data_to_silver_s3(**context) -> dict[str, int]:
                 regexp_replace(price, '[^0-9]', '', 'g')::BIGINT as price,
                 address::TEXT as address,
                 -- разбиваем адрес
-                trim(SPLIT_PART(address, ',', 1))::VARCHAR as city,
+                SPLIT_PART(address, ',', 1)::VARCHAR as city,
                 -- округ только заглавными
                 NULLIF(regexp_extract(address, '([А-Яа-я]+АО)', 1), '')::VARCHAR as okrug,
-                trim(SPLIT_PART(address, ',', 3))::VARCHAR as district,
+                -- район, для новой москвы null, слишком нестабильно 
+                CASE
+                    WHEN okrug IN ('НАО', 'ТАО') THEN NULL
+                    ELSE NULLIF(regexp_extract(address, '(р-н\s?[^,]+)', 1), '')::VARCHAR
+                END as district,
                 CASE
                     WHEN okrug IN ('НАО', 'ТАО') THEN TRUE
                     ELSE FALSE
@@ -104,14 +109,15 @@ def get_and_transform_raw_data_to_silver_s3(**context) -> dict[str, int]:
                     ORDER BY parsed_at DESC
                 ) as row_num
             FROM raw_transformed
-            WHERE area IS NOT NULL -- выкидываем строки с битыми заголовками
+            WHERE area IS NOT NULL -- выкидываем строки с битыми данными
                 AND price IS NOT NULL
                 AND okrug IS NOT NULL
+                AND (district IS NOT NULL OR is_new_moscow) -- у новой москвы может не быть райнов
         )
-        -- сохраняем в Parquet, убирая не нужные колонки
+        -- сохраняем в parquet, EXLUDE убирает ненужные колонки
         SELECT * EXCLUDE (row_num, norm_address)
         FROM deduplicated
-        WHERE row_num = 1 ) TO '{silver_s3_key}' (FORMAT PARQUET);
+        WHERE row_num = 1) TO '{silver_s3_key}' (FORMAT PARQUET, OVERWRITE TRUE);
         """
     )
 
