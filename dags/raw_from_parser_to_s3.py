@@ -106,7 +106,7 @@ with DAG(
         api_version="auto",
         auto_remove="force",
         docker_url="unix://var/run/docker.sock",  # используем докер на хосте аирфлоу
-        network_mode="flats_analyze_default",
+        network_mode="data_network",
         mount_tmp_dir=False,
         tty=True,  # логи контейнера видны в логах аирфлоу
         mem_limit="3g",  # ограничение по памяти для контейнера

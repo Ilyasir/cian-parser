@@ -5,17 +5,19 @@ x-airflow-common:
     context: .
     # кастомный докерфал для Airflow (либы из requirements.txt (duckdb) и расширения для duckdb уже установлены)
     dockerfile: Dockerfile.airflow
+  image: airflow_custom:latest
   environment:
     &airflow-common-env
     TZ: Europe/Moscow
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow/airflow
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+  networks:
+    - data_network
   # /var/run/docker.sock чтобы Airflow мог сам запускать контейнеры (юзается для DockerOperator)
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
@@ -26,17 +28,23 @@ x-airflow-common:
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
-    postgres:
+    postgres_airflow:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+    postgres_dwh:
       condition: service_healthy
   deploy:
     resources:
       limits:
-        memory: 1.5G # ограничение памяти для Airflow
+        memory: 2G # ограничение памяти для Airflow
 
 services:
   minio:
     image: minio/minio:RELEASE.2025-02-18T16-25-55Z
     container_name: minio
+    networks:
+      - data_network
     volumes:
       - ./minio_data:/data
     ports:
@@ -47,10 +55,17 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       TZ: Europe/Moscow
     command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
 # ждет когда minio поднимется, создает бакеты raw и silver
   minio-init:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2025-02-21T16-00-46Z
+    networks:
+      - data_network
     container_name: minio_init
     depends_on:
       - minio
@@ -72,6 +87,8 @@ services:
       "
   postgres_dwh:
     image: postgres:13
+    networks:
+      - data_network
     container_name: postgres_dwh
     environment:
       TZ: Europe/Moscow
@@ -89,15 +106,18 @@ services:
       retries: 5
       start_period: 5s
     restart: always
-  postgres:
+  postgres_airflow:
     image: postgres:13
+    networks:
+      - data_network
+    container_name: postgres_airflow
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
       TZ: Europe/Moscow
     volumes:
-      - postgres-db-volume:/var/lib/postgresql/data
+      - postgres_airflow_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
@@ -107,9 +127,10 @@ services:
 
   airflow-webserver:
     <<: *airflow-common
+    container_name: airflow_webserver
     command: webserver
     ports:
-      - "8080:8080"
+      - "${_AIRFLOW_WWW_PORT}:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
@@ -124,6 +145,7 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
+    container_name: airflow_scheduler
     command: scheduler
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob']
@@ -140,6 +162,7 @@ services:
 # выполняет миграцию базы, создает админского юзера, создает коннекшены для postgres и minio, подтягивает парометры из .env
   airflow-init:
     <<: *airflow-common
+    container_name: airflow_init
     entrypoint: /bin/bash
     command:
       - -c
@@ -163,11 +186,9 @@ services:
           --conn-type 'aws' \
           --conn-login "${MINIO_ROOT_USER}" \
           --conn-password "${MINIO_ROOT_PASSWORD}" \
-          --conn-extra "{\"endpoint_url\": \"http://minio:9000\", \"addressing_style\": \"path\"}" || true
+          --conn-extra "{\"endpoint_url\": \"http://minio:9000\", \"addressing_style\": \"path\", \"region_name\": \"ru-central1\"}" || true
     environment:
       <<: *airflow-common-env
-      _AIRFLOW_DB_MIGRATE: 'true'
-      _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD}
       _AIRFLOW_WWW_USER_EMAIL: ${_AIRFLOW_WWW_USER_EMAIL}
@@ -175,6 +196,13 @@ services:
     volumes:
       - ${AIRFLOW_PROJ_DIR:-.}:/sources
 
+networks:
+  data_network:
+    driver: bridge
+    name: data_network
+
 volumes:
-  postgres-db-volume:
+  postgres_airflow_data:
+    name: postgres_airflow_data
   postgres_dwh_data:
+    name: postgres_dwh_data
