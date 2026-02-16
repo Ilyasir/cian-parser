@@ -16,7 +16,31 @@ DAG_ID = "gold_from_s3_to_pg"
 LAYER_SOURCE = "silver"
 LAYER_TARGET = "gold"
 
-SHORT_DESCRIPTION = ""
+SHORT_DESCRIPTION = "Загрузка данных из S3 в Postgres DWH с поддержкой версионности цен по SCD2."
+
+LONG_DESCRIPTION = """
+## DAG: Gold Layer Ingestion (Postgres)
+Этот DAG завершает основной процесс обработки данных, перенося их из объектного хранилища (S3)
+в реляционную бд **PostgreSQL** для последующей аналитики.
+Сохраняет историю изменений цен на квартиры с помощью **SCD2**.
+
+### Основные этапы:
+1. **load_from_s3_to_pg_stage**: 
+    - Использует **DuckDB** как движок для передачи данных.
+    - Через расширение `postgres` и с помощью `ATTACH` подключается напрямую к базе.
+    - Очищает `stage_flats` и копирует туда данные из Parquet файла из S3.
+    - Выполняет приведение типов ENUM: `okrug_name`, `transport_type`.
+2. **merge_from_stage_to_history**:
+    - Выполняет SQL-скрипт обновления истории изменений цен в таблице `history_flats`.
+    - Реализует логику **SCD2**.
+
+### Логика SCD2:
+Отслеживаем изменения поля `price`. Если у квартиры с тем же `flat_id` изменилась цена:
+- Поле `effective_to` у старой записи устанавливается равным дате, когда данные были спарсены.
+- Поле `is_active` старой записи становится `FALSE`.
+- Вставляется новая запись с `is_active = TRUE` и `effective_from = parsed_at`.
+"""
+
 
 default_args = {
     "owner": OWNER,
@@ -28,15 +52,16 @@ default_args = {
 
 def load_silver_data_from_s3_to_pg(**context) -> None:
     """Копипаст данных из S3 в stage таблицу postgres, с помощью duckdb"""
-    dt = context["data_interval_start"].in_timezone("Europe/Moscow")
+    dt = context["data_interval_end"].in_timezone("Europe/Moscow")
     silver_s3_key = (
         f"s3://{LAYER_SOURCE}/cian/year={dt.year}/month={dt.strftime('%m')}/day={dt.strftime('%d')}/flats.parquet"
     )
-
+    con = get_duckdb_s3_connection("s3_conn")
+    # Получаем параметры для подключения к Postgres из Airflow Connections
     pg_conn = BaseHook.get_connection("pg_conn")
+    # Маскируем логин и пароль в логах Airflow
     mask_secret(pg_conn.login)
     mask_secret(pg_conn.password)
-    con = get_duckdb_s3_connection("s3_conn")
 
     try:
         logging.info(f"💻 Загружаю данные из {silver_s3_key} в stage таблицу")
@@ -84,6 +109,7 @@ with DAG(
     max_active_runs=1,
     tags=["pg", "gold"],
     description=SHORT_DESCRIPTION,
+    doc_md=LONG_DESCRIPTION,
 ) as dag:
     start = EmptyOperator(
         task_id="start",
