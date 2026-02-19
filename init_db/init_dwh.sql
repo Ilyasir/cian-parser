@@ -1,3 +1,4 @@
+-- DDL
 CREATE SCHEMA IF NOT EXISTS gold;
 
 CREATE TYPE gold.transport_type AS ENUM('walk', 'transport');
@@ -5,10 +6,10 @@ CREATE TYPE gold.okrug_name AS ENUM('НАО', 'ТАО', 'ЦАО', 'САО', 'Ю�
 
 CREATE TABLE IF NOT EXISTS gold.history_flats (
 	id SERIAL PRIMARY KEY,
-	flat_hash TEXT not null,
+	flat_hash TEXT not null, -- уникальный хэш квартиры (md5 от адреса, этажа и комнатности)
 	link TEXT not null,
 	title VARCHAR(100) not null,
-	price BIGINT not null,
+	price BIGINT not null, -- в москве цены огромные, юзаем bigint
 	-- характеристики квартиры
 	is_apartament BOOLEAN not null,
 	is_studio BOOLEAN not null,
@@ -29,10 +30,11 @@ CREATE TABLE IF NOT EXISTS gold.history_flats (
 	parsed_at TIMESTAMP not null,
 	-- тех. поля для истории (SCD2)
 	effective_from TIMESTAMP not null,
-    effective_to TIMESTAMP not null DEFAULT '9999-12-31 23:59:59',  
+    effective_to TIMESTAMP not null DEFAULT '9999-12-31 23:59:59',
     is_active BOOLEAN not null DEFAULT TRUE
 );
 
+-- временная таблица, всегда полностью перезаписывается перед мержем в историю
 CREATE TABLE IF NOT EXISTS gold.stage_flats (
     flat_hash TEXT,
     link TEXT,

@@ -1,3 +1,4 @@
+-- Этот SQL собирает стату по данным в silver, для проверки качетства данных после трансформации
 SELECT
     COUNT(*) as total_rows,
     COUNT(distinct district) as all_districts,

@@ -1,3 +1,4 @@
+-- Этот SQL собирает статистику по сырым данным, для проверки сразу после парсинга и загрузки в S3
 SELECT
     COUNT(*) as total_rows,
     COUNT(DISTINCT id) as unique_ids,
