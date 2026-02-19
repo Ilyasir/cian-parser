@@ -7,7 +7,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.utils.log.secrets_masker import mask_secret
-from utils.datasets import SILVER_DATASET_CIAN_FLATS
+from utils.datasets import GOLD_DATASET_HISTORY, SILVER_DATASET_CIAN_FLATS
 from utils.duckdb import get_duckdb_s3_connection
 from utils.sql import load_sql
 
@@ -115,6 +115,7 @@ with DAG(
 
     end = EmptyOperator(
         task_id="end",
+        outlets=[GOLD_DATASET_HISTORY],
     )
 
     start >> load_from_s3_to_pg_stage >> merge_from_stage_to_history >> end
