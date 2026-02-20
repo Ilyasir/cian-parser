@@ -27,7 +27,6 @@ CREATE TABLE IF NOT EXISTS gold.history_flats (
 	metro_name VARCHAR(100),
 	metro_min INT,
 	metro_type gold.transport_type,
-	parsed_at TIMESTAMP not null,
 	-- тех. поля для истории (SCD2)
 	effective_from TIMESTAMP not null,
     effective_to TIMESTAMP not null DEFAULT '9999-12-31 23:59:59',

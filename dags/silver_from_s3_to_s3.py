@@ -112,7 +112,7 @@ def check_silver_data_quality(**context):
         logging.error(f"❌ Слишком много уникальных округов - {okrugs}")
         raise AirflowFailException("Округов больше 12!")
 
-    if districts > 125:
+    if districts > 127:
         logging.warning(f"⚠️ Много уникальных районов - {districts}")
 
     if min_area < 5:
