@@ -30,3 +30,16 @@ CREATE TABLE IF NOT EXISTS gold.dm_district_history (
     updated_at TIMESTAMP DEFAULT NOW(),
     PRIMARY KEY (report_date, district)
 );
+
+CREATE TABLE IF NOT EXISTS gold.dm_price_drops (
+    flat_hash TEXT,
+    link TEXT,
+    district VARCHAR(100),
+    area NUMERIC(10, 2),
+	rooms_count INT,
+    old_price BIGINT,
+    new_price BIGINT,
+    drop_percent NUMERIC(6, 2),
+    drop_abs BIGINT,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
