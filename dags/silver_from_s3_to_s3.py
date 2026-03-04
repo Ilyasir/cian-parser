@@ -7,8 +7,7 @@ from airflow.exceptions import AirflowFailException
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from utils.datasets import RAW_DATASET_SALES_FLATS, SILVER_DATASET_SALES_FLATS
-from utils.duckdb import connect_duckdb_to_s3
-from utils.sql import load_sql
+from utils.duckdb import connect_duckdb_to_s3, load_sql
 from utils.telegram import on_failure_callback, on_success_callback
 
 OWNER = "ilyas"

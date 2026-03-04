@@ -7,7 +7,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from utils.datasets import GOLD_DATASET_HISTORY
-from utils.duckdb import connect_duckdb_to_pg, connect_duckdb_to_s3
+from utils.duckdb import connect_duckdb_to_pg, connect_duckdb_to_s3, load_sql
 from utils.telegram import on_failure_callback, on_success_callback
 
 OWNER = "ilyas"
@@ -47,58 +47,20 @@ def get_ml_dataset_from_pg_to_s3(**context):
     dataset_s3_key = f"s3://ml-data/datasets/dataset_{dt.format('YYYY-MM-DD')}.parquet"
     model_s3_key = f"s3://ml-data/models/model_{dt.format('YYYY-MM-DD')}.cbm"
 
+    query_prepare_dataset = load_sql(
+        "prepare_dataset.sql",
+        dataset_s3_key=dataset_s3_key,
+    )
+
     con = duckdb.connect()
     connect_duckdb_to_s3(con, "s3_conn")
     connect_duckdb_to_pg(con, "pg_conn")
     try:
         logging.info(f"💻 Начинаю подготовку признаков и загрузку датасета в {dataset_s3_key}")
-        con.execute(
-            f"""
-            COPY (
-                WITH base_table as (
-                    select
-                        -- самые свежие записи, убираем дубли со старыми ценами
-                        row_number() OVER(
-                            partition by flat_hash
-                            order by effective_to desc
-                        ) as row_num,
-                        round((price / area)) as price_per_meter,
-                        is_apartament,
-                        is_studio,
-                        area::DOUBLE as area,
-                        rooms_count,
-                        floor,
-                        total_floors,
-                        (floor = 1) as is_first_floor,
-                        (floor = total_floors) as is_last_floor,
-                        is_new_moscow,
-                        okrug,
-                        district,
-                        -- нормализация времени до метро
-                        CASE
-                            WHEN metro_type = 'walk' THEN metro_min
-                            ELSE metro_min * 5 -- примерно, умнножаем на 5 для трансопрта
-                        END as metro_min,
-                        flat_hash
-                    from flats_db.gold.history_flats
-                    where metro_min is not null
-                )
-                select
-                    * EXCLUDE (row_num, flat_hash),
-                    -- доп. признаки для модели 
-                    (floor::DOUBLE / total_floors::DOUBLE) as rel_floor,
-                    (area / (rooms_count + 1)) as area_per_room,
-                    (total_floors > 18) as is_high_rise
-                from base_table
-                where row_num = 1
-                -- чтобы порядок в датасете был стабильный, иначе метрики скачут на тех же данных
-                order by flat_hash
-            ) TO '{dataset_s3_key}' (FORMAT PARQUET);
-            """
-        )
+        con.execute(query_prepare_dataset)
     finally:
         con.close()
-    logging.info(f"✅ Датасет подготовлен и загружен в {dataset_s3_key}")
+    logging.info(f"✅ Датасет загружен в {dataset_s3_key}")
 
     return {
         "dataset_s3_key": dataset_s3_key,

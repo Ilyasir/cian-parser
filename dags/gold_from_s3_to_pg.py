@@ -7,8 +7,7 @@ from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from utils.datasets import GOLD_DATASET_HISTORY, SILVER_DATASET_SALES_FLATS
-from utils.duckdb import connect_duckdb_to_pg, connect_duckdb_to_s3
-from utils.sql import load_sql
+from utils.duckdb import connect_duckdb_to_pg, connect_duckdb_to_s3, load_sql
 from utils.telegram import on_failure_callback
 
 OWNER = "ilyas"
