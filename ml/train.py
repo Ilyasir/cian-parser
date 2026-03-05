@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -18,7 +19,7 @@ LOCAL_DATA = "data.parquet"
 LOCAL_MODEL = "model.cbm"
 
 
-def train():
+def train() -> dict:
     logging.info(f"📥 Скачиваю датасет из S3: {DATASET_S3_KEY}")
     download_file_from_s3(BUCKET, LOCAL_DATA, DATASET_S3_KEY)
 
@@ -72,6 +73,15 @@ def train():
     model.save_model(LOCAL_MODEL)
     upload_file_to_s3(LOCAL_MODEL, BUCKET, MODEL_S3_KEY)
 
+    metrics = {
+        "mae": round(mae),
+        "mape": f"{round(mape * 100, 2)}%",
+        "rows_trained": len(df),
+    }
+
+    return metrics
+
 
 if __name__ == "__main__":
-    train()
+    metrics = train()
+    print(json.dumps(metrics))  # для того, чтобы в xcom потом запушить

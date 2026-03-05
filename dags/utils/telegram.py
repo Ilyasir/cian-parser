@@ -1,3 +1,4 @@
+import json
 import logging
 
 from airflow.providers.telegram.hooks.telegram import TelegramHook
@@ -18,17 +19,22 @@ def send_telegram_message(context, status="error"):
 
         if xcoms:
             message += "📋 <b>Statistics from XCom:</b>\n"
+            # xcoms этих тасок отправляем
             important_tasks = ["check_data_quality", "train_model"]
 
             for t_id in important_tasks:
                 data = ti.xcom_pull(task_ids=t_id)
-                if data and isinstance(data, dict):
-                    message += f"\n🔹 <i>Task: {t_id}</i>\n"
-                    for key, value in data.items():
+
+                if data:
+                    if isinstance(data, str):
+                        data = json.loads(data)
+                    if isinstance(data, dict):
+                        message += f"\n🔹 <i>Task: {t_id}</i>\n"
                         # форматируем для красоты
-                        clean_key = key.replace("_", " ").capitalize()
-                        val_str = f"<code>{value}</code>" if isinstance(value, (int, float)) else str(value)
-                        message += f"  • {clean_key}: {val_str}\n"
+                        for key, value in data.items():
+                            clean_key = key.replace("_", " ").capitalize()
+                            val_str = f"<code>{value}</code>" if isinstance(value, (int, float)) else str(value)
+                            message += f"  • {clean_key}: {val_str}\n"
         else:
             message += "<i>No statistics found in XCom.</i>"
     else:
