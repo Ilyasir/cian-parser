@@ -1,8 +1,10 @@
+import json
 import logging
 
 import duckdb
 import pendulum
 from airflow import DAG
+from airflow.exceptions import AirflowFailException
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
@@ -68,6 +70,23 @@ def get_ml_dataset_from_pg_to_s3(**context):
     }
 
 
+def check_ml_metrics(**context):
+    metrics = json.loads(context["ti"].xcom_pull(task_ids="train_model").strip().split("\n")[-1])
+
+    mae = metrics.get("mae")
+    mape = metrics.get("mape")
+    rows = metrics.get("rows_trained")
+    logging.info(f"📊 MAE: {mae}, MAPE: {mape}, Rows: {rows}")
+
+    if mae > 150_000:
+        logging.error(f"❌ MAE слишком высокое: {mae}")
+        raise AirflowFailException()
+
+    if float(mape.strip("%")) > 20.0:
+        logging.error(f"❌ MAPE слишком высокое: {mape}")
+        raise AirflowFailException("MAPE выше 20%")
+
+
 with DAG(
     dag_id=DAG_ID,
     schedule=[GOLD_DATASET_HISTORY],
@@ -113,8 +132,13 @@ with DAG(
         on_success_callback=on_success_callback,
     )
 
+    check_metrics = PythonOperator(
+        task_id="check_metrics",
+        python_callable=check_ml_metrics,
+    )
+
     end = EmptyOperator(
         task_id="end",
     )
 
-    start >> prepare_training_dataset >> train_model >> end
+    start >> prepare_training_dataset >> train_model >> check_metrics >> end
