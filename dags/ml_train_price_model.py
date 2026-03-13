@@ -60,7 +60,12 @@ def get_ml_dataset_from_pg_to_s3(**context):
     try:
         logging.info(f"💻 Начинаю подготовку признаков и загрузку датасета в {dataset_s3_key}")
         con.execute(query_prepare_dataset)
+
     finally:
+        try:
+            con.execute("DETACH flats_db;")
+        except Exception as e:
+            logging.warning(f"⚠️ соединение уже разорвано: {e}")
         con.close()
     logging.info(f"✅ Датасет загружен в {dataset_s3_key}")
 
